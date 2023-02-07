@@ -32,15 +32,20 @@ char **read_input(void) {
 }
 
 int getOption(char *input) {
+    char *options[] = {"mv", "cp", "rm", "ls", "cd", "pwd", "mkdir", "rmdir", "cat", "info", "incp", "outcp", "format", "load", "exit"};
+    for (int i = 0; i < 15; i++) {
+        if (!strcmp(input, options[i])) return i;
+    }
 
+    return -1;
 }
 
 
 
 int main() {
-    read_input();
-//    printf("%s", input[0]);
-//print greetings to the user
+    getOption(NULL);
+
+
 
     return 0;
 }
