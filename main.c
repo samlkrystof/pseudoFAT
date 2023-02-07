@@ -43,7 +43,11 @@ int getOption(char *input) {
 
 
 int main() {
-    getOption(NULL);
+    for (int i = 0; i < 16; i++) {
+        char *options[] = {"mv", "cp", "rm", "ls", "cd", "pwd", "mkdir", "rmdir", "cat", "info", "incp", "outcp", "format", "load", "exit", "ext"};
+        int option = getOption(options[i]);
+        printf("%d\n", option);
+    }
 
 
 
