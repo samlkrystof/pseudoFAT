@@ -4,6 +4,9 @@
 
 #include <malloc.h>
 #include "FATfileSystem.h"
+#include "DirCluster.h"
+
+void createRootDir(FATFileSystem *system);
 
 FATFileSystem *createFileSystem(unsigned int totalSize) {
     FATFileSystem *fileSystem = malloc(sizeof(FATFileSystem));
@@ -11,10 +14,12 @@ FATFileSystem *createFileSystem(unsigned int totalSize) {
     fileSystem->fatTable1 = createFATTable(fileSystem->clusterCount);
     fileSystem->fatTable2 = createFATTable(fileSystem->clusterCount);
     fileSystem->clusterArea = malloc(fileSystem->clusterCount * CLUSTER_SIZE);
-    fileSystem->rootDirCluster = fileSystem->clusterArea;
-    fileSystem->currentDirCluster = fileSystem->clusterArea;
+    fileSystem->rootDirCluster = 0;
+    fileSystem->currentDirCluster = 0;
     fileSystem->freeSpace = fileSystem->clusterCount * CLUSTER_SIZE;
     fileSystem->totalSpace = fileSystem->clusterCount * CLUSTER_SIZE;
+
+    createRootDir(fileSystem);
     return fileSystem;
 }
 
@@ -46,9 +51,22 @@ int saveNewFileSystem(FATFileSystem *fileSystem, char *name) {
     fwrite(fileSystem->fatTable2, sizeof(unsigned int), fileSystem->fatTable2->entriesCount, file);
     fwrite(fileSystem->clusterArea, 1, fileSystem->clusterCount * CLUSTER_SIZE, file);
 
-
     fclose(file);
     return 0;
+}
+
+void createRootDir(FATFileSystem *system) {
+    if (system == NULL) {
+        return;
+    }
+
+    createDirCluster(system->clusterArea, 0, 0);
+    system->fatTable1->entries[0] = 0xFFFFFFFF;
+    system->fatTable2->entries[0] = 0xFFFFFFFF;
+    system->fatTable1->freeEntriesCount--;
+    system->fatTable2->freeEntriesCount--;
+    system->freeSpace -= CLUSTER_SIZE;
+
 }
 
 FATFileSystem *loadFileSystem(char *name) {

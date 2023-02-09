@@ -13,8 +13,8 @@ typedef struct {
     unsigned int clusterCount;
     unsigned int totalSpace;
     unsigned int freeSpace;
-    DirCluster *rootDirCluster;
-    DirCluster *currentDirCluster;
+    unsigned int rootDirCluster;
+    unsigned int currentDirCluster;
     FATTable *fatTable1;
     FATTable *fatTable2;
     void *clusterArea;
