@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "FileCluster.h"
+#include "DirCluster.h"
+#include "FATfileSystem.h"
 
 char **read_input(void) {
     char buffer[1024];
@@ -42,13 +45,35 @@ int getOption(char *input) {
 
 
 
+
 int main() {
-    for (int i = 0; i < 16; i++) {
-        char *options[] = {"mv", "cp", "rm", "ls", "cd", "pwd", "mkdir", "rmdir", "cat", "info", "incp", "outcp", "format", "load", "exit", "ext"};
-        int option = getOption(options[i]);
-        printf("%d\n", option);
+    FILE *fp = fopen("input.txt", "r");
+    //get size of file
+    fseek(fp, 0, SEEK_END);
+    long fsize = ftell(fp);
+    rewind(fp);
+//    fseek(fp, 0, SEEK_SET);
+    //print size of file
+    printf("Size of file: %ld\n", fsize);
+    FILE *fp2 = fopen("output.txt", "w");
+    char *buffer = calloc(1024,1);
+    while (fread(buffer, 1, 1024, fp) > 0) {
+        fwrite(buffer, 1, fsize, fp2);
     }
 
+    fclose(fp);
+    fclose(fp2);
+    free(buffer);
+
+    int size = 1024 * 1024 * 600;
+    FATFileSystem *fileSystem = createFileSystem(size);
+    saveNewFileSystem(fileSystem, "test");
+    printf("Total space: %d\n", fileSystem->totalSpace);
+    freeFileSystem(&fileSystem);
+
+//    printf("%d\n", sizeof(DirCluster));
+//    printf("%d\n", sizeof(FileCluster));
+//    printf("%d\n", sizeof(DirectoryEntry));
 
 
     return 0;
