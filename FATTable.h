@@ -13,7 +13,7 @@
 typedef struct {
     unsigned int entriesCount;
     unsigned int freeEntriesCount;
-    DirectoryEntry *entries;
+    unsigned int *entries;
 } FATTable;
 
 FATTable *createFATTable(unsigned int entriesCount);
