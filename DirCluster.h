@@ -18,6 +18,7 @@ int createDirCluster(void *cluster, unsigned int clusterNumber, unsigned int par
 int addDirEntry(void *cluster, char *name, unsigned int clusterNumber, unsigned int size, char type);
 int removeDirEntry(void *cluster, char *name);
 int getFreeDirEntry(void *cluster);
+DirEntry *findDirEntry(void *cluster, char *name);
 
 
 #endif //PSEUDOFAT_DIRCLUSTER_H

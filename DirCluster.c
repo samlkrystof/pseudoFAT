@@ -62,3 +62,16 @@ int getFreeDirEntry(void *cluster) {
     return -1;
 }
 
+DirEntry *findDirEntry(void *cluster, char *name) {
+    if (cluster == NULL || name == NULL) {
+        return NULL;
+    }
+    DirCluster *dirCluster = (DirCluster *) cluster;
+    for (int i = 0; i < CLUSTER_SIZE / sizeof(DirEntry); i++) {
+        if (dirCluster->entries[i].type && !strncmp(dirCluster->entries[i].name, name, 12)) {
+            return &dirCluster->entries[i];
+        }
+    }
+    return NULL;
+}
+

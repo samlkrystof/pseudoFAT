@@ -23,7 +23,7 @@ int makeDirectory(FATFileSystem *fileSystem, char *name);
 int removeDirectory(FATFileSystem *fileSystem, char *name);
 
 //int listDirectory(FATFileSystem *fileSystem, DirCluster *cluster);
-int listDirectory(FATFileSystem *fileSystem);
+int listDirectory(FATFileSystem *fileSystem, char *name);
 //int catFile(FATFileSystem *fileSystem, char *name, DirCluster *cluster);
 int catFile(FATFileSystem *fileSystem, char *name);
 //int changeDirectory(FATFileSystem *fileSystem, char *name, DirCluster *cluster);

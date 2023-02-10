@@ -25,12 +25,13 @@ int saveNewFileSystem(FATFileSystem *fileSystem, char *name);
 void freeFileSystem(FATFileSystem **fileSystem);
 FATFileSystem *loadFileSystem(char *name);
 void createRootDir(FATFileSystem *system);
-int addDirectory(FATFileSystem *fileSystem, char *name);
-int addFile(FATFileSystem *fileSystem, char *name, unsigned int size);
+int addDirectory(FATFileSystem *fileSystem, char *name, DirCluster *cluster);
+int addFile(FATFileSystem *fileSystem, char *name, unsigned int size, char *content, DirCluster *cluster);
 int deleteDirectory(FATFileSystem *fileSystem, char *name, DirCluster *cluster);
 int deleteFile(FATFileSystem *fileSystem, char *name, DirCluster *cluster);
 DirCluster *findDirectory(FATFileSystem *fileSystem, char *name);
 
+int getFileContent(FATFileSystem *fileSystem, char *name, char *content, DirCluster *cluster);
 
 
 // H
