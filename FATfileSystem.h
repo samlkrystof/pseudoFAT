@@ -13,8 +13,8 @@ typedef struct {
     unsigned int clusterCount;
     unsigned int totalSpace;
     unsigned int freeSpace;
-    unsigned int rootDirCluster;
-    unsigned int currentDirCluster;
+    DirCluster *rootDirCluster;
+    DirCluster *currentDirCluster;
     FATTable *fatTable1;
     FATTable *fatTable2;
     void *clusterArea;
@@ -24,7 +24,11 @@ FATFileSystem *createFileSystem(unsigned int totalSize);
 int saveNewFileSystem(FATFileSystem *fileSystem, char *name);
 void freeFileSystem(FATFileSystem **fileSystem);
 FATFileSystem *loadFileSystem(char *name);
+void createRootDir(FATFileSystem *system);
 int addDirectory(FATFileSystem *fileSystem, char *name);
+int addFile(FATFileSystem *fileSystem, char *name, unsigned int size);
+int deleteDirectory(FATFileSystem *fileSystem, char *name, DirCluster *cluster);
+int deleteFile(FATFileSystem *fileSystem, char *name, DirCluster *cluster);
 
 
 

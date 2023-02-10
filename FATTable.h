@@ -10,11 +10,12 @@
 #endif //PSEUDOFAT_FATTABLE_H
 
 typedef struct {
-    unsigned int entriesCount;
-    unsigned int freeEntriesCount;
-    unsigned int *entries; // 0 - free, 0xFFFFFFFF - last cluster, between 2 and 0xFFFFFFFE - next cluster
+    unsigned int clustersCount;
+    unsigned int freeClustersCount;
+    unsigned int *clusters; // 0 - free, 0xFFFFFFFF - last cluster, 0xFFFFFFFE - corrupted
 } FATTable;
 
 FATTable *createFATTable(unsigned int entriesCount);
 void freeFATTable(FATTable **table);
-int addEntry(FATTable *table1, FATTable *table2, char *name, unsigned int size, unsigned int directory, char type);
+int getFreeCluster(FATTable *table1, FATTable *table2);
+int getNextFreeCluster(FATTable *table1, FATTable *table2, int firstCluster);
