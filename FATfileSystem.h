@@ -29,6 +29,7 @@ int addDirectory(FATFileSystem *fileSystem, char *name);
 int addFile(FATFileSystem *fileSystem, char *name, unsigned int size);
 int deleteDirectory(FATFileSystem *fileSystem, char *name, DirCluster *cluster);
 int deleteFile(FATFileSystem *fileSystem, char *name, DirCluster *cluster);
+DirCluster *findDirectory(FATFileSystem *fileSystem, char *name);
 
 
 

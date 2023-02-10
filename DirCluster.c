@@ -20,6 +20,13 @@ int addDirEntry(void *cluster, char *name, unsigned int clusterNumber, unsigned 
         return 1;
     }
     DirCluster *dirCluster = (DirCluster *) cluster;
+    // Check if file with this name already exists
+    for (int i = 0; i < CLUSTER_SIZE / sizeof(DirEntry); i++) {
+        if (dirCluster->entries[i].type && !strcmp(dirCluster->entries[i].name, name)) {
+            return 1;
+        }
+    }
+
     int index = getFreeDirEntry(cluster);
     if (index == -1) {
         return 1;

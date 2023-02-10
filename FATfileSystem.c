@@ -101,7 +101,8 @@ int addDirectory(FATFileSystem *fileSystem, char *name) {
         return 1;
     }
 
-    addDirEntry(fileSystem->currentDirCluster, name, freeCluster, 0, 2);
+    if(addDirEntry(fileSystem->currentDirCluster, name, freeCluster, 0, 2) == 1) return 1;
+
     createDirCluster(fileSystem->clusterArea + freeCluster * CLUSTER_SIZE, freeCluster, fileSystem->currentDirCluster->entries[1].cluster);
     fileSystem->fatTable1->clusters[freeCluster] = 0xFFFFFFFF;
     fileSystem->fatTable2->clusters[freeCluster] = 0xFFFFFFFF;
@@ -121,7 +122,8 @@ int addFile(FATFileSystem *fileSystem, char *name, unsigned int size) {
         return 1;
     }
 
-    addDirEntry(fileSystem->currentDirCluster, name, freeCluster, size, 1);
+    if (addDirEntry(fileSystem->currentDirCluster, name, freeCluster, size, 1) == 1) return 1;
+
     int clustersCount = size / CLUSTER_SIZE;
     if (size % CLUSTER_SIZE != 0) clustersCount++;
     for (int i = 0; i < clustersCount; i++) {
@@ -208,6 +210,37 @@ int deleteFile(FATFileSystem *fileSystem, char *name, DirCluster *cluster) {
     fileSystem->freeSpace += size;
 
     return 0;
+
+}
+
+DirCluster *findDirectory(FATFileSystem *fileSystem, char *name) {
+    if (fileSystem == NULL || name == NULL) {
+        return NULL;
+    }
+
+    DirCluster *cluster = name[0] == '/' ? fileSystem->currentDirCluster : fileSystem->rootDirCluster;
+    char *token = strtok(name, "/");
+    while (token != NULL) {
+        int found = 0;
+        for (int i = 0; i < CLUSTER_SIZE / sizeof(DirEntry); i++) {
+            if (strncmp(cluster->entries[i].name, token, 12) == 0) {
+                if (cluster->entries[i].type == 2) {
+                    cluster = fileSystem->clusterArea + cluster->entries[i].cluster * CLUSTER_SIZE;
+                    found = 1;
+                    break;
+                } else {
+                    return cluster;
+                }
+
+            }
+        }
+        if (!found) {
+            return NULL;
+        }
+        token = strtok(NULL, "/");
+    }
+
+    return cluster;
 
 }
 
