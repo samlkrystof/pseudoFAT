@@ -12,9 +12,10 @@
 
 typedef struct {
     DirEntry entries[CLUSTER_SIZE / sizeof(DirEntry)];
+    char name[16];
 } DirCluster;
 
-int createDirCluster(void *cluster, unsigned int clusterNumber, unsigned int parentClusterNumber);
+int createDirCluster(DirCluster *cluster, unsigned int clusterNumber, unsigned int parentClusterNumber);
 int addDirEntry(void *cluster, char *name, unsigned int clusterNumber, unsigned int size, char type);
 int removeDirEntry(void *cluster, char *name);
 int getFreeDirEntry(void *cluster);

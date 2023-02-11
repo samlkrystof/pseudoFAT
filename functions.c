@@ -98,7 +98,7 @@ int makeDirectory(FATFileSystem *fileSystem, char *name) {
         return -1;
     }
 
-    DirCluster *cluster = findDirectory(fileSystem, name);
+    DirCluster *cluster = strchr(name, '/') == NULL ? fileSystem->currentDirCluster : findDirectory(fileSystem, name);
     if (cluster == NULL) {
         return -1;
     }
@@ -135,13 +135,18 @@ int listDirectory(FATFileSystem *fileSystem, char *name) {
         return -1;
     }
 
+    printf("Name\tType\tSize\tCluster\n");
     for (int i = 0; i < CLUSTER_SIZE / sizeof(DirEntry); i++) {
         DirEntry *entry = &cluster->entries[i];
         if (entry->type == 0) {
             break;
         }
         //todo edit print
-        printf("%s\t", entry->name);
+        char *type = entry->type == 1 ? "DIR" : "FILE";
+        printf("%s\t%s\t%d\t%d\n", entry->name, type, entry->size, entry->cluster);
+
+        //format string to 12 chars
+
     }
 
     return 0;
@@ -171,10 +176,12 @@ int catFile(FATFileSystem *fileSystem, char *name) {
     return 0;
 }
 
+
 int changeDirectory(FATFileSystem *fileSystem, char *name) {
     if (fileSystem == NULL || name == NULL) {
         return -1;
     }
+
 
     DirCluster *cluster = findDirectory(fileSystem, name);
     if (cluster == NULL) {
@@ -207,6 +214,7 @@ int printWorkingDirectory(FATFileSystem *fileSystem) {
         i++;
     }
 
+    printf("/");
     for (int j = i - 1; j >= 0; j--) {
         printf("%s/", path[j]);
         free(path[j]);

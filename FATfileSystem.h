@@ -17,7 +17,7 @@ typedef struct {
     DirCluster *currentDirCluster;
     FATTable *fatTable1;
     FATTable *fatTable2;
-    void *clusterArea;
+    DirCluster *clusterArea;
 } FATFileSystem;
 
 FATFileSystem *createFileSystem(unsigned int totalSize);

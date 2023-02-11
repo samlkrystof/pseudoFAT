@@ -13,8 +13,8 @@ FATFileSystem *createFileSystem(unsigned int totalSize) {
     fileSystem->fatTable1 = createFATTable(fileSystem->clusterCount);
     fileSystem->fatTable2 = createFATTable(fileSystem->clusterCount);
     fileSystem->clusterArea = malloc(fileSystem->clusterCount * CLUSTER_SIZE);
-    fileSystem->rootDirCluster = fileSystem->clusterArea;
-    fileSystem->currentDirCluster = fileSystem->clusterArea;
+    fileSystem->rootDirCluster = &fileSystem->clusterArea[0];
+    fileSystem->currentDirCluster = &fileSystem->clusterArea[0];
     fileSystem->freeSpace = fileSystem->clusterCount * CLUSTER_SIZE;
     fileSystem->totalSpace = fileSystem->clusterCount * CLUSTER_SIZE;
 
@@ -48,7 +48,7 @@ int saveNewFileSystem(FATFileSystem *fileSystem, char *name) {
     fwrite(fileSystem, 4, 2, file);
     fwrite(fileSystem->fatTable1, sizeof(unsigned int), fileSystem->fatTable1->clustersCount, file);
     fwrite(fileSystem->fatTable2, sizeof(unsigned int), fileSystem->fatTable2->clustersCount, file);
-    fwrite(fileSystem->clusterArea, 1, fileSystem->clusterCount * CLUSTER_SIZE, file);
+    fwrite(fileSystem->clusterArea, CLUSTER_SIZE, fileSystem->clusterCount, file);
 
     fclose(file);
     return 0;
@@ -59,7 +59,7 @@ void createRootDir(FATFileSystem *system) {
         return;
     }
 
-    createDirCluster(system->clusterArea, 0, 0);
+    createDirCluster(&system->clusterArea[0], 0, 0);
     system->fatTable1->clusters[0] = 0xFFFFFFFF;
     system->fatTable2->clusters[0] = 0xFFFFFFFF;
     system->fatTable1->freeClustersCount--;
@@ -85,7 +85,7 @@ FATFileSystem *loadFileSystem(char *name) {
     fileSystem->clusterArea = malloc(fileSystem->clusterCount * CLUSTER_SIZE);
     fread(fileSystem->fatTable1, sizeof(unsigned int), fileSystem->fatTable1->clustersCount, file);
     fread(fileSystem->fatTable2, sizeof(unsigned int), fileSystem->fatTable2->clustersCount, file);
-    fread(fileSystem->clusterArea, 1, fileSystem->clusterCount * CLUSTER_SIZE, file);
+    fread(fileSystem->clusterArea, CLUSTER_SIZE, fileSystem->clusterCount, file);
 
     fclose(file);
     return fileSystem;
@@ -104,7 +104,7 @@ int addDirectory(FATFileSystem *fileSystem, char *name, DirCluster *cluster) {
     if (cluster == NULL) cluster = fileSystem->currentDirCluster;
     if(addDirEntry(cluster, name, freeCluster, 0, 2) == 1) return 1;
 
-    createDirCluster(fileSystem->clusterArea + freeCluster * CLUSTER_SIZE, freeCluster, fileSystem->currentDirCluster->entries[1].cluster);
+    createDirCluster(&fileSystem->clusterArea[freeCluster], freeCluster, fileSystem->currentDirCluster->entries[1].cluster);
     fileSystem->fatTable1->clusters[freeCluster] = 0xFFFFFFFF;
     fileSystem->fatTable2->clusters[freeCluster] = 0xFFFFFFFF;
     fileSystem->fatTable1->freeClustersCount--;
@@ -131,7 +131,7 @@ int addFile(FATFileSystem *fileSystem, char *name, unsigned int size, char *cont
     if (size % CLUSTER_SIZE != 0) clustersCount++;
     for (int i = 0; i < clustersCount; i++) {
         int nextFreeCluster = getNextFreeCluster(fileSystem->fatTable1, fileSystem->fatTable2, freeCluster);
-        memccpy(fileSystem->clusterArea + freeCluster * CLUSTER_SIZE, content + i * CLUSTER_SIZE, 0, CLUSTER_SIZE);
+        memccpy(&fileSystem->clusterArea[freeCluster], content + i * CLUSTER_SIZE, 0, CLUSTER_SIZE);
         fileSystem->fatTable1->clusters[freeCluster] = nextFreeCluster;
         fileSystem->fatTable2->clusters[freeCluster] = nextFreeCluster;
         fileSystem->fatTable1->freeClustersCount--;
@@ -200,7 +200,7 @@ int deleteFile(FATFileSystem *fileSystem, char *name, DirCluster *cluster) {
     int nextCluster = fileSystem->fatTable1->clusters[clusterNumber];
 
     for (int i = 0; i < clustersCount; i++) {
-        memset(fileSystem->clusterArea + clusterNumber * CLUSTER_SIZE, 0, CLUSTER_SIZE);
+        memset(&fileSystem->clusterArea[clusterNumber], 0, CLUSTER_SIZE);
         fileSystem->fatTable1->clusters[clusterNumber] = 0;
         fileSystem->fatTable2->clusters[clusterNumber] = 0;
         clusterNumber = nextCluster;
@@ -220,14 +220,19 @@ DirCluster *findDirectory(FATFileSystem *fileSystem, char *name) {
         return NULL;
     }
 
-    DirCluster *cluster = name[0] == '/' ? fileSystem->currentDirCluster : fileSystem->rootDirCluster;
+//    if (strchr(name, '/') == NULL) {
+//        return fileSystem->currentDirCluster;
+//    }
+
+
+    DirCluster *cluster = name[0] == '/' ? fileSystem->rootDirCluster : fileSystem->currentDirCluster;
     char *token = strtok(name, "/");
     while (token != NULL) {
         int found = 0;
         for (int i = 0; i < CLUSTER_SIZE / sizeof(DirEntry); i++) {
             if (strncmp(cluster->entries[i].name, token, 12) == 0) {
                 if (cluster->entries[i].type == 2) {
-                    cluster = fileSystem->clusterArea + cluster->entries[i].cluster * CLUSTER_SIZE;
+                    cluster = &fileSystem->clusterArea[cluster->entries[i].cluster];
                     found = 1;
                     break;
                 } else {
@@ -263,12 +268,12 @@ int getFileContent(FATFileSystem *fileSystem, char *name, char *content, DirClus
     int nextCluster = fileSystem->fatTable1->clusters[clusterNumber];
 
     for (int i = 0; i < clustersCount; i++) {
-        memccpy(content + i * CLUSTER_SIZE, fileSystem->clusterArea + clusterNumber * CLUSTER_SIZE, 0, CLUSTER_SIZE);
+        memccpy(content + i * CLUSTER_SIZE, &fileSystem->clusterArea[clusterNumber], 0, CLUSTER_SIZE);
         clusterNumber = nextCluster;
         nextCluster = fileSystem->fatTable1->clusters[clusterNumber];
     }
     // copy last cluster
-    memccpy(content + clustersCount * CLUSTER_SIZE, fileSystem->clusterArea + clusterNumber * CLUSTER_SIZE, 0, size % CLUSTER_SIZE);
+    memccpy(content + clustersCount * CLUSTER_SIZE, &fileSystem->clusterArea[clusterNumber], 0, size % CLUSTER_SIZE);
 
     return 0;
 }

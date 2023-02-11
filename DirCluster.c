@@ -4,13 +4,12 @@
 
 #include "DirCluster.h"
 
-int createDirCluster(void *cluster, unsigned int clusterNumber, unsigned int parentClusterNumber) {
+int createDirCluster(DirCluster *cluster, unsigned int clusterNumber, unsigned int parentClusterNumber) {
     if (cluster == NULL) {
         return 1;
     }
-    DirCluster *dirCluster = (DirCluster *) cluster;
-    dirCluster->entries[0] = (DirEntry) {clusterNumber, 0, ".", 2};
-    dirCluster->entries[1] = (DirEntry) {parentClusterNumber, 0, "..", 2};
+    cluster->entries[0] = (DirEntry) {clusterNumber, 0, ".", 2};
+    cluster->entries[1] = (DirEntry) {parentClusterNumber, 0, "..", 2};
 
     return 0;
 }
@@ -31,8 +30,14 @@ int addDirEntry(void *cluster, char *name, unsigned int clusterNumber, unsigned 
     if (index == -1) {
         return 1;
     }
-    dirCluster->entries[index] = (DirEntry) {clusterNumber, size, *name, type};
-    return 1;
+//    char nameCopy[12];
+//    strcpy(nameCopy, name);
+    DirEntry *entry = &dirCluster->entries[index];
+    entry->cluster = clusterNumber;
+    entry->size = size;
+    entry->type = type;
+    strncpy(entry->name, name, 12);
+    return 0;
 }
 
 int removeDirEntry(void *cluster, char *name) {
