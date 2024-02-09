@@ -1,317 +1,349 @@
-//
-// Created by Kryst on 10.02.2023.
-//
-
+#include "iNodeFileSystem.h"
 #include "functions.h"
+#include "directory_operations.h"
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 
+void read_input(char **words) {
+    char buffer[1024];
+    char *tok;
 
+    int count = 0;
 
-int copy(char *source, char *destination, FATFileSystem *system) {
-    if (source == NULL || destination == NULL || system == NULL) {
-        return -1;
+    // Read input from console
+    fgets(buffer, 1024, stdin);
+
+    for (int i = 0; i < 3; i++) {
+        // clear memory
+        memset(words[i], 0, 1024);
     }
 
-    DirCluster *sourceCluster = findDirectory(system, source);
-    DirCluster *destinationCluster = findDirectory(system, destination);
 
-    if (sourceCluster == NULL || destinationCluster == NULL) {
-        return -1;
+    // Split input into words using strtok
+    tok = strtok(buffer, " ");
+    while (tok != NULL && count < 4) {
+        // Allocate memory for each word
+        strcpy(words[count], tok);
+        count++;
+
+        tok = strtok(NULL, " \n");
     }
-    char *sourceName = getFileName(source);
-    unsigned int size = findDirEntry(sourceCluster, sourceName)->size;
-
-    char *destinationName = getFileName(destination);
-    char *content = malloc(size);
-    // read file content
-    getFileContent(system, sourceName, content, sourceCluster);
-
-    addFile(system, destinationName, size, content, destinationCluster);
-    free(content);
-
-    return 0;
 }
 
-char *getFileName(char *path) {
-    if (path == NULL) {
-        return NULL;
+int getOption(char *input) {
+    // remove newline character
+    if (input[strlen(input) - 1] == '\n') input[strlen(input) - 1] = '\0';
+    char *options[] = {"mv", "cp", "rm", "ls", "cd", "pwd", "mkdir", "rmdir", "cat", "info", "incp", "outcp", "format",
+                       "load", "xcp", "short", "exit"};
+
+    for (int i = 0; i < 17; i++) {
+        if (!strcmp(input, options[i])) return i;
     }
 
-    // trim all slashes and leave only file name
-    char *fileName = strrchr(path, '/');
-    if (fileName == NULL) {
-        fileName = path;
+    return -1;
+}
+
+int chooseOption(char **input, iNodeFileSystem *fileSystem) {
+    if (input == NULL || *input == NULL) return 0;
+
+    int option = getOption(input[0]);
+    char *src = input[1];
+    char *dst = input[2];
+    input[0] = src;
+    input[1] = dst;
+    input[2] = input[3];
+
+
+    //array of function pointers
+    int (*functions[16])(iNodeFileSystem *, char **) = {move, copy, removeFile, listDirectory, changeDirectory,
+                                                        printWorkingDirectory, makeDirectory, removeDirectory, catFile,
+                                                        printFileInformation, inCopy, outCopy, format, load, combineFiles, shorten};
+
+    if (option == 16) {
+        return 16;
+    }
+    if (option < 0 || option >= 15) {
+        printf("Invalid command\n");
+        return 0;
+    }
+    return functions[option](fileSystem, input);
+}
+
+int move(iNodeFileSystem *fileSystem, char **input) {
+    if (input == NULL || input[0] == NULL || input[1] == NULL) return 0;
+
+    //check if the file exists
+    if (findDirectory(fileSystem, input[0]) == -1) {
+        printf("FILE NOT FOUND\n");
+        return 0;
+    }
+
+    unsigned int srcInode = findParentDir(fileSystem, input[0]);
+    unsigned int dstInode = findParentDir(fileSystem, input[1]);
+
+    if (srcInode == -1 || dstInode == -1) {
+        printf("PATH NOT FOUND\n");
+        return 0;
+    }
+
+    dirEntry *entry = getDirEntry(fileSystem,srcInode, input[0]);
+
+    // if src and dst are same, just rename
+    if (srcInode == dstInode) {
+        memset(entry->name, 0, 12);
+        strncpy(entry->name, input[1], strlen(input[1]));
     } else {
-        fileName++;
+        input[1] = getFileName(input[1]);
+        addDirEntry(fileSystem, dstInode, entry->iNode, input[1]);
+        free(entry);
     }
-
-    return fileName;
+    printf("OK\n");
+    return 1;
 }
 
-int move(char *source, char *destination, FATFileSystem *system) {
-    if (source == NULL || system == NULL) {
-        return -1;
+int copy(iNodeFileSystem *fileSystem, char **input) {
+    if (input == NULL || input[0] == NULL || input[1] == NULL) return 0;
+
+    //check if the file exists
+    if (findDirectory(fileSystem, input[0]) == -1) {
+        printf("FILE NOT FOUND\n");
+        return 0;
     }
 
-    DirCluster *sourceCluster = findDirectory(system, source);
-    DirCluster *destinationCluster = findDirectory(system, destination);
-    if (sourceCluster == NULL || destinationCluster == NULL) {
-        return -1;
+    int srcInode = findParentDir(fileSystem, input[0]);
+    int dstInode = findParentDir(fileSystem, input[1]);
+
+    if (srcInode == -1 || dstInode == -1) {
+        printf("PATH NOT FOUND\n");
+        return 0;
     }
-    char *sourceName = getFileName(source);
-    char *destinationName = getFileName(destination);
-    DirEntry *sourceEntry = findDirEntry(sourceCluster, sourceName);
-    if (destinationCluster == sourceCluster) {
-        // fill name with zeros
-        memset(sourceEntry->name, 0, 12);
-        // copy name
-        memcpy(sourceEntry->name, destinationName, strlen(destinationName));
+
+    dirEntry *entry = getDirEntry(fileSystem,srcInode, input[0]);
+    //todo multiple blocks
+    addFile(fileSystem, entry->name, fileSystem->iNodes[entry->iNode].size, fileSystem->blocks + fileSystem->iNodes[entry->iNode].directBlocks[0], dstInode);
+    printf("OK\n");
+    return 1;
+}
+
+int removeFile(iNodeFileSystem *fileSystem, char **input) {
+    if (input == NULL || input[0] == NULL) return 0;
+
+    //check if the file exists
+    if (findDirectory(fileSystem, input[0]) == -1) {
+        printf("FILE NOT FOUND\n");
+        return 0;
+    }
+
+    deleteFile(fileSystem, input[0]);
+    printf("OK\n");
+    return 1;
+}
+int listDirectory(iNodeFileSystem *fileSystem, char **input) {
+    // if input is empty, print current directory
+    dirEntry *entry;
+    if (input == NULL || input[0] == NULL) {
+        entry = fileSystem->currentDir;
     } else {
-        DirEntry *destinationEntry = findDirEntry(destinationCluster, destinationName);
-        if (destinationEntry != NULL) {
-            return -1;
+        int inode = findParentDir(fileSystem, input[0]);
+        if (inode == -1) {
+            printf("PATH NOT FOUND\n");
+            return 0;
         }
-
-        addDirEntry(destinationCluster, destinationName, sourceEntry->cluster, sourceEntry->size, sourceEntry->type);
-        removeDirEntry(sourceCluster, sourceName);
+        entry = getDirEntry(fileSystem, inode, input[0]);
     }
-
-    return 0;
+    for (int i = 0; i < fileSystem->iNodes[entry->iNode].size; i++) {
+        dirEntry *another = (dirEntry *)&fileSystem->blocks[fileSystem->iNodes[entry->iNode].directBlocks[0] * fileSystem->blockSize] + i;
+        char isDirectory = fileSystem->iNodes[another->iNode].isDirectory;
+        // print type and name, isDirectory is 0 for file, 1 for directory
+        printf("%c%s\n", isDirectory ? '+' : '-', another->name);
+    }
+    return 1;
 }
 
-int removeFile(FATFileSystem *fileSystem, char *name) {
-    if (fileSystem == NULL || name == NULL) {
-        return -1;
+int changeDirectory(iNodeFileSystem *fileSystem, char **input) {
+    if (input == NULL || input[0] == NULL) return 0;
+    // check if is directory
+    if(findDirectory(fileSystem, input[0]) == -1) {
+        printf("PATH NOT FOUND\n");
+        return 0;
     }
-
-    DirCluster *cluster = findDirectory(fileSystem, name);
-    if (cluster == NULL) {
-        return -1;
+    int inode = findParentDir(fileSystem, input[0]);
+    if (inode == -1) {
+        printf("PATH NOT FOUND\n");
+        return 0;
     }
-
-    char *fileName = getFileName(name);
-
-    return deleteFile(fileSystem, fileName, cluster);
+    fileSystem->currentDir = getDirEntry(fileSystem, inode, input[0]);
+    printf("OK\n");
+    return 1;
 }
 
-int makeDirectory(FATFileSystem *fileSystem, char *name) {
-    if (fileSystem == NULL || name == NULL) {
-        return -1;
+int printWorkingDirectory(iNodeFileSystem *fileSystem, char **input) {
+    // get full path
+    char *path = malloc(100);
+    dirEntry *actual = fileSystem->currentDir;
+    dirEntry *entry = fileSystem->currentDir;
+    char **names = malloc(100);
+    names[0] = "..";
+    while (entry != fileSystem->rootDir) {
+        strcat(path, entry->name);
+        strcat(path, "/");
+        changeDirectory(fileSystem, names);
     }
-
-    DirCluster *cluster = strchr(name, '/') == NULL ? fileSystem->currentDirCluster : findDirectory(fileSystem, name);
-    if (cluster == NULL) {
-        return -1;
+    printf("%s\n", path);
+    fileSystem->currentDir = actual;
+    return 1;
+}
+int makeDirectory(iNodeFileSystem *fileSystem, char **input) {
+    if (input == NULL || input[0] == NULL) return 0;
+    // check if directory already exists
+    int exists = findDirectory(fileSystem, input[0]);
+    if (findDirectory(fileSystem, input[0]) != -1) {
+        printf("EXIST\n");
+        return 0;
     }
-
-    char *dirName = getFileName(name);
-
-    addDirectory(fileSystem, dirName, cluster);
-
-    return 0;
+    char *dirName = getFileName(input[0]);
+    int parent = findParentDir(fileSystem, input[0]);
+    if (parent == -1) {
+        printf("PATH NOT FOUND\n");
+        return 0;
+    }
+    addDirectory(fileSystem, dirName, parent);
+    printf("OK\n");
+    return 1;
 }
 
-int removeDirectory(FATFileSystem *fileSystem, char *name) {
-    if (fileSystem == NULL || name == NULL) {
-        return -1;
-    }
-
-    DirCluster *cluster = findDirectory(fileSystem, name);
-    if (cluster == NULL) {
-        return -1;
-    }
-
-    char *dirName = getFileName(name);
-
-    return deleteDirectory(fileSystem, dirName, cluster);
+int removeDirectory(iNodeFileSystem *fileSystem, char **input) {
+    if (input == NULL || input[0] == NULL) return 0;
+    deleteDirectory(fileSystem, input[0]);
+    printf("OK\n");
+    return 1;
 }
 
-int listDirectory(FATFileSystem *fileSystem, char *name) {
-    if (fileSystem == NULL) {
-        return -1;
+int catFile(iNodeFileSystem *fileSystem, char **input) {
+    //todo
+    if (input == NULL || input[0] == NULL) return 0;
+    int parent = findParentDir(fileSystem, input[0]);
+    if (parent == -1) {
+        printf("FILE NOT FOUND\n");
+        return 0;
     }
-
-    DirCluster *cluster = name == NULL ? fileSystem->currentDirCluster : findDirectory(fileSystem, name);
-    if (cluster == NULL) {
-        return -1;
-    }
-
-    printf("Name\tType\tSize\tCluster\n");
-    for (int i = 0; i < CLUSTER_SIZE / sizeof(DirEntry); i++) {
-        DirEntry *entry = &cluster->entries[i];
-        if (entry->type == 0) {
-            break;
-        }
-        //todo edit print
-        char *type = entry->type == 1 ? "DIR" : "FILE";
-        printf("%s\t%s\t%d\t%d\n", entry->name, type, entry->size, entry->cluster);
-
-        //format string to 12 chars
-
-    }
-
-    return 0;
-}
-
-int catFile(FATFileSystem *fileSystem, char *name) {
-    if (fileSystem == NULL || name == NULL) {
-        return -1;
-    }
-
-    DirCluster *cluster = findDirectory(fileSystem, name);
-    if (cluster == NULL) {
-        return -1;
-    }
-
-    char *fileName = getFileName(name);
-    DirEntry *entry = findDirEntry(cluster, fileName);
+    dirEntry *entry = getDirEntry(fileSystem, parent, input[0]);
     if (entry == NULL) {
-        return -1;
+        printf("FILE NOT FOUND\n");
+        return 0;
     }
-
-    char *content = malloc(entry->size);
-    getFileContent(fileSystem, fileName, content, cluster);
-    printf("%s", content);
-    free(content);
-
-    return 0;
+    for (int i = 0; i < fileSystem->iNodes[entry->iNode].size; i++) {
+        printf("%s", fileSystem->blocks[fileSystem->iNodes[entry->iNode].directBlocks[0] * fileSystem->blockSize + i]);
+    }
+    return 1;
 }
 
-
-int changeDirectory(FATFileSystem *fileSystem, char *name) {
-    if (fileSystem == NULL || name == NULL) {
-        return -1;
+int printFileInformation(iNodeFileSystem *fileSystem, char **input) {
+    //print name, size, inode, blocks
+    if (input == NULL || input[0] == NULL) return 0;
+    int parent = findParentDir(fileSystem, input[0]);
+    if (parent == -1) {
+        printf("FILE NOT FOUND\n");
+        return 0;
     }
-
-
-    DirCluster *cluster = findDirectory(fileSystem, name);
-    if (cluster == NULL) {
-        return -1;
-    }
-
-    fileSystem->currentDirCluster = cluster;
-
-    return 0;
-}
-
-int printWorkingDirectory(FATFileSystem *fileSystem) {
-    if (fileSystem == NULL) {
-        return -1;
-    }
-    char **path = malloc(1024 * sizeof(char *));
-    int i = 0;
-    DirCluster *cluster = fileSystem->currentDirCluster;
-    while (cluster != fileSystem->rootDirCluster) {
-        path[i] = malloc(12);
-
-        memcpy(path[i], cluster->entries[0].name, 12);
-        DirCluster *parent = (DirCluster *) &fileSystem->clusterArea[cluster->entries[1].cluster];
-        // find actual cluster in parent
-        for (int j = 0; j < CLUSTER_SIZE / sizeof(DirEntry); j++) {
-            if (parent->entries[j].cluster == cluster->entries[0].cluster) {
-                memcpy(path[i], parent->entries[j].name, 12);
-            }
-        }
-        i++;
-    }
-
-    printf("/");
-    for (int j = i - 1; j >= 0; j--) {
-        printf("%s/", path[j]);
-        free(path[j]);
-    }
-    free(path);
-    return 0;
-}
-
-int printFileInformation(FATFileSystem *fileSystem, char *name) {
-    if (fileSystem == NULL || name == NULL) {
-        return -1;
-    }
-
-    DirCluster *cluster = findDirectory(fileSystem, name);
-    if (cluster == NULL) {
-        return -1;
-    }
-
-    char *fileName = getFileName(name);
-    DirEntry *entry = findDirEntry(cluster, fileName);
+    dirEntry *entry = getDirEntry(fileSystem, parent, input[0]);
     if (entry == NULL) {
-        return -1;
+        printf("FILE NOT FOUND\n");
+        return 0;
     }
-
-    printf("Name: %s\n", entry->name);
-    printf("Size: %d\n", entry->size);
-    printf("Type: %d\n", entry->type);
-    printf("Cluster: %d\n", entry->cluster);
-
-    return 0;
+    //todo
+    int size = fileSystem->iNodes[entry->iNode].size;
+    int inode = entry->iNode;
+    int blocks = fileSystem->iNodes[entry->iNode].size / fileSystem->blockSize;
+    printf("Name: %s\nSize: %d\nInode: %d\nBlocks: %d\n", entry->name, size, inode, blocks);
 }
+int inCopy(iNodeFileSystem *fileSystem, char **input) {
+    if (input == NULL || input[0] == NULL || input[1] == NULL) return 0;
 
-int inCopy(FATFileSystem *fileSystem, char *sourceName, char *destinationName) {
-    if (fileSystem == NULL || sourceName == NULL || destinationName == NULL) {
-        return -1;
+    FILE *file = fopen(input[0], "rb");
+    if (file == NULL) {
+        printf("FILE NOT FOUND\n");
+        return 0;
     }
-
-    FILE *source = fopen(sourceName, "r");
-    if (source == NULL) {
-        return -1;
-    }
-
-
-    DirCluster *destinationCluster = findDirectory(fileSystem, destinationName);
-    if (destinationCluster == NULL) {
-        return -1;
-    }
-    char *fileName = getFileName(destinationName);
-
-    //get size of file
-    fseek(source, 0, SEEK_END);
-    int size = ftell(source);
-    fseek(source, 0, SEEK_SET);
-
+    fseek(file, 0, SEEK_END);
+    int size = ftell(file);
+    fseek(file, 0, SEEK_SET);
     char *content = malloc(size);
-    fread(content, 1, size, source);
-    fclose(source);
-
-    int result = addFile(fileSystem, fileName, size, content, destinationCluster);
+    fread(content, 1, size, file);
+    fclose(file);
+    addFile(fileSystem, input[1], size, content, findParentDir(fileSystem, input[1]));
+    // printf path not found
     free(content);
-    return result;
+    printf("OK\n");
+    return 1;
 }
 
-int outCopy(FATFileSystem *fileSystem, char *sourceName, char *destinationName) {
-    if (fileSystem == NULL || sourceName == NULL || destinationName == NULL) {
-        return -1;
+int outCopy(iNodeFileSystem *fileSystem, char **input) {
+    if (input == NULL || input[0] == NULL || input[1] == NULL) return 0;
+    int parent = findParentDir(fileSystem, input[0]);
+    if (parent == -1) {
+        printf("FILE NOT FOUND\n");
+        return 0;
     }
-
-    DirCluster *sourceCluster = findDirectory(fileSystem, sourceName);
-    if (sourceCluster == NULL) {
-        return -1;
+    dirEntry *entry = getDirEntry(fileSystem,  parent, input[0]);
+    if (entry == NULL) {
+        return 0;
     }
-    char *fileName = getFileName(sourceName);
-
-    DirEntry *sourceEntry = findDirEntry(sourceCluster, fileName);
-    if (sourceEntry == NULL) {
-        return -1;
+    FILE *file = fopen(input[1], "wb");
+    if (file == NULL) {
+        printf("PATH NOT FOUND\n");
+        return 0;
     }
+    //todo multiple blocks
+    fwrite(fileSystem->blocks + fileSystem->iNodes[entry->iNode].directBlocks[0] * fileSystem->blockSize, 1, fileSystem->iNodes[entry->iNode].size, file);
+    fclose(file);
+    printf("OK\n");
+    return 1;
+}
 
-    char *content = malloc(sourceEntry->size);
-    getFileContent(fileSystem, fileName, content, sourceCluster);
-
-    FILE *destination = fopen(destinationName, "w");
-    if (destination == NULL) {
-        return -1;
+int format(iNodeFileSystem *fileSystem, char **input) {
+    if (input == NULL || input[0] == NULL) return 0;
+    if (fileSystem != NULL) {
+        freeFileSystem(&fileSystem);
     }
+    int size = strtol(input[0], NULL, 10);
+    fileSystem = createFileSystem(size * 1024 * 1024);
+    return 1;
+}
 
-    fwrite(content, 1, sourceEntry->size, destination);
-    fclose(destination);
-    free(content);
+int load(iNodeFileSystem *fileSystem, char **input) {
+    // open file which contains instructions
+    if (input == NULL || input[0] == NULL) return 0;
+    FILE *file = fopen(input[0], "r");
+    if (file == NULL) {
+        return 0;
+    }
+    // read line by line
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    while ((read = getline(&line, &len, file)) != -1) {
+        char **args = malloc(100);
+        char *token = strtok(line, " ");
+        int i = 0;
+        while (token != NULL) {
+            args[i] = token;
+            token = strtok(NULL, " ");
+            i++;
+        }
+        chooseOption(args, fileSystem);
+    }
+    fclose(file);
+    return 1;
+}
 
+int combineFiles(iNodeFileSystem *fileSystem, char **input) {
+    printf("Not implemented\n");
     return 0;
 }
 
-
-
-
-
-
-
+int shorten(iNodeFileSystem *fileSystem, char **input) {
+    printf("Not implemented\n");
+    return 0;
+}

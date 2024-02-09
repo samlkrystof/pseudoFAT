@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.24)
 project(pseudoFAT C)
 
-set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD 99)
 
-add_executable(pseudoFAT main.c FATfileSystem.c FATfileSystem.h FATTable.c FATTable.h DirCluster.c DirCluster.h FileCluster.h sizes.h DirEntry.h functions.c functions.h)
+add_executable(pseudoFAT main.c functions.c functions.h
+        iNodeFileSystem.c
+        iNodeFileSystem.h
+        bitmap_operations.c
+        bitmap_operations.h
+        directory_operations.c
+        directory_operations.h)
