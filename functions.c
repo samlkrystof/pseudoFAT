@@ -326,6 +326,7 @@ int format(iNodeFileSystem *fileSystem, char **input) {
     }
     int size = strtol(input[0], NULL, 10);
     fileSystem = createFileSystem(size * 1024 * 1024);
+    printf("OK\n");
     return 1;
 }
 
