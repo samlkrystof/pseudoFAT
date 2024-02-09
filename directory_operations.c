@@ -274,14 +274,12 @@ int deleteDirectory(iNodeFileSystem *fileSystem, char *name) {
     // find directory
     int inode = findDirectory(fileSystem, name);
     if (inode == -1) {
-        printf("FILE NOT FOUND\n");
         return 1;
     }
     // check if directory is empty
     //todo fread
     if (fileSystem->iNodes[inode].size > 2) {
-        printf("NOT EMPTY\n");
-        return 1;
+        return 2;
     }
     // todo fread
     // get parent directory, the first entry in directory is always parent

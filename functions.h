@@ -8,7 +8,7 @@
 #include "iNodeFileSystem.h"
 
 
-void read_input(char **words);
+char **read_input();
 int getOption(char *input);
 int chooseOption(char **input, iNodeFileSystem *fileSystem);
 

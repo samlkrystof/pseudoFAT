@@ -5,10 +5,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-void read_input(char **words) {
+char **read_input() {
     char buffer[1024];
     char *tok;
-
+    char **words = malloc(4 * sizeof(char *));
+    for (int i = 0; i < 4; i++) {
+        words[i] = calloc(1024,1);
+    }
     int count = 0;
 
     // Read input from console
@@ -21,14 +24,14 @@ void read_input(char **words) {
 
 
     // Split input into words using strtok
-    tok = strtok(buffer, " ");
-    while (tok != NULL && count < 4) {
-        // Allocate memory for each word
+    tok = strtok(buffer, " \n");
+    while (tok != NULL && count <= 3) {
         strcpy(words[count], tok);
-        count++;
-
         tok = strtok(NULL, " \n");
+        count++;
     }
+
+    return words;
 }
 
 int getOption(char *input) {
@@ -67,7 +70,13 @@ int chooseOption(char **input, iNodeFileSystem *fileSystem) {
         printf("Invalid command\n");
         return 0;
     }
-    return functions[option](fileSystem, input);
+    int output = functions[option](fileSystem, input);
+    //todo leak
+    for(int i = 0; i < 3; i++) {
+        free(input[i]);
+    }
+    free(input);
+    return output;
 }
 
 int move(iNodeFileSystem *fileSystem, char **input) {
@@ -113,6 +122,9 @@ int copy(iNodeFileSystem *fileSystem, char **input) {
 
     int srcInode = findParentDir(fileSystem, input[0]);
     int dstInode = findParentDir(fileSystem, input[1]);
+    if (dstInode == -1 && strncmp(input[1], "/", 1) != 0) {
+        dstInode = 0;
+    }
 
     if (srcInode == -1 || dstInode == -1) {
         printf("PATH NOT FOUND\n");
@@ -130,7 +142,7 @@ int removeFile(iNodeFileSystem *fileSystem, char **input) {
     if (input == NULL || input[0] == NULL) return 0;
 
     //check if the file exists
-    if (findDirectory(fileSystem, input[0]) == -1) {
+    if (findDirectory(fileSystem, input[0]) != -1) {
         printf("FILE NOT FOUND\n");
         return 0;
     }
@@ -142,7 +154,7 @@ int removeFile(iNodeFileSystem *fileSystem, char **input) {
 int listDirectory(iNodeFileSystem *fileSystem, char **input) {
     // if input is empty, print current directory
     dirEntry *entry;
-    if (input == NULL || input[0] == NULL) {
+    if (input == NULL || input[0] == NULL || strncmp(input[0], "", 1) == 0) {
         entry = fileSystem->currentDir;
     } else {
         int inode = findParentDir(fileSystem, input[0]);
@@ -197,7 +209,6 @@ int printWorkingDirectory(iNodeFileSystem *fileSystem, char **input) {
 int makeDirectory(iNodeFileSystem *fileSystem, char **input) {
     if (input == NULL || input[0] == NULL) return 0;
     // check if directory already exists
-    int exists = findDirectory(fileSystem, input[0]);
     if (findDirectory(fileSystem, input[0]) != -1) {
         printf("EXIST\n");
         return 0;
@@ -215,8 +226,14 @@ int makeDirectory(iNodeFileSystem *fileSystem, char **input) {
 
 int removeDirectory(iNodeFileSystem *fileSystem, char **input) {
     if (input == NULL || input[0] == NULL) return 0;
-    deleteDirectory(fileSystem, input[0]);
-    printf("OK\n");
+    int output = deleteDirectory(fileSystem, input[0]);
+    if(output == 1) {
+        printf("FILE NOT FOUND\n");
+    } else if (output == 2) {
+        printf("NOT EMPTY\n");
+    } else {
+        printf("OK\n");
+    }
     return 1;
 }
 

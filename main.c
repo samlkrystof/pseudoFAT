@@ -13,19 +13,12 @@ int main(int argc, char **argv) {
         return 1;
     }
     iNodeFileSystem *fileSystem = createFileSystem(1024 * 1024);
-    char **input = malloc(4 * sizeof(char *));
-    for (int i = 0; i < 4; i++) {
-        input[i] = malloc(100);
-    }
+
     int option;
     while(option != 16) {
-        read_input(input);
+        char **input = read_input();
         option = chooseOption(input, fileSystem);
     }
     freeFileSystem(&fileSystem);
-    for (int i = 0; i < 4; i++) {
-        free(input[i]);
-    }
-    free(input);
     return 0;
 }
