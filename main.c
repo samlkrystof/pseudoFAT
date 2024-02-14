@@ -1,9 +1,4 @@
-//
-// Created by Kryst on 09.02.2024.
-//
-
 #include <stdio.h>
-#include <stdlib.h>
 #include "iNodeFileSystem.h"
 #include "functions.h"
 
@@ -12,7 +7,7 @@ int main(int argc, char **argv) {
         printf("Name of file system not provided\n");
         return 1;
     }
-    iNodeFileSystem *fileSystem = createFileSystem(1024 * 1024);
+    iNodeFileSystem *fileSystem = createFileSystem(1024 * 1024, argv[1]);
 
     int option;
     while(option != 16) {

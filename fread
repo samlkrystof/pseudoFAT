@@ -1,4 +1,0 @@
-load iNode 7
-write iNode 3
-load block 8
-write block 3

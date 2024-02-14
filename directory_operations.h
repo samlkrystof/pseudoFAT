@@ -15,10 +15,14 @@ int addBaseEntries(iNodeFileSystem *fileSystem, unsigned int inode, unsigned int
 int addToParent(iNodeFileSystem *fileSystem, unsigned int parent, unsigned int inode, char *name);
 int findDirectory(iNodeFileSystem *fileSystem, char *name);
 unsigned int findParentDir(iNodeFileSystem *fileSystem, char *name);
-dirEntry *getDirEntry(iNodeFileSystem * fileSystem, int inode, char *name);
-int addDirEntry(iNodeFileSystem *fileSystem, int parent, int inode, char *name);
+dirEntry *getDirEntry(iNodeFileSystem * fileSystem,unsigned int inode, char *name);
+int saveDirEntry(iNodeFileSystem *fileSystem, unsigned int inode, dirEntry *entry);
+int addDirEntry(iNodeFileSystem *fileSystem,unsigned int parent,unsigned int inode, char *name);
 char *getFileName(char *name);
-int *getAllBlocks(iNodeFileSystem *fileSystem, unsigned int inode, int *numBlocks);
+int *getAllBlocks(iNodeFileSystem *fileSystem, unsigned int index, int *numBlocks);
+char *getFileContent(iNodeFileSystem *fileSystem, int inode);
+int addBlockToINode(iNodeFileSystem *fileSystem, iNode *parent, int block);
+
 
 
 
