@@ -569,6 +569,10 @@ int load(iNodeFileSystem *fileSystem, char **input) {
         int i = 0;
 
         while (token != NULL) {
+            //get rid of newline if it's the last character
+            if (token[strlen(token) - 1] == '\n') {
+                token[strlen(token) - 1] = '\0';
+            }
             args[i] = token;
             token = strtok(NULL, " ");
             i++;
