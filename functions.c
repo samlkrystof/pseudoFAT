@@ -87,11 +87,14 @@ int chooseOption(char **input, iNodeFileSystem *fileSystem) {
     }
 
     int output = functions[option](fileSystem, input);
-    for (int i = 0; i < 3; i++) {
-        free(input[i]);
-    }
 
-    free(input);
+//    if (input == NULL) return output;
+//    for (int i = 0; i < 3; i++) {
+//        if(input[i] != NULL) {
+//            free(input[i]);
+//        }
+//    }
+
     return output;
 }
 
@@ -129,6 +132,15 @@ int move(iNodeFileSystem *fileSystem, char **input) {
     } else {
         input[1] = getFileName(input[1]);
         addDirEntry(fileSystem, dstInode, entry->iNode, input[1]);
+        char *block = loadBlock(fileSystem, srcInode);
+        dirEntry *dir = (dirEntry *) block;
+        for (int i = 0; i < fileSystem->blockSize / sizeof(dirEntry); i++) {
+            if (dir[i].iNode == entry->iNode) {
+                memset(dir[i].name, 0, 12);
+                break;
+            }
+        }
+        saveBlock(fileSystem, block, srcInode);
     }
 
     free(entry);

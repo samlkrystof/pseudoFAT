@@ -48,14 +48,16 @@ char *getDirName(char *name) {
             break;
         }
     }
+    char *nameCopy = malloc(strlen(name) + 1);
+    strncpy(nameCopy, name, strlen(name) + 1);
 
     if (i == 0) {
         return "/";
     } else if (i == -1) {
         return ".";
     } else {
-        name[i] = '\0';
-        return name;
+        nameCopy[i] = '\0';
+        return nameCopy;
     }
 }
 
@@ -706,10 +708,11 @@ int saveDirEntry(iNodeFileSystem *fileSystem, unsigned int inode, dirEntry *entr
         char *blockPtr = loadBlock(fileSystem, block);
         dirEntry *entryPtr = (dirEntry *) blockPtr + dirEntryIndex;
 
-        if (!strncmp(entryPtr->name, entry->name, 12)) {
+//        if (!strncmp(entryPtr->name, entry->name, 12)) {
+        if (entryPtr->iNode == entry->iNode) {
             memcpy(entryPtr, entry, sizeof(dirEntry));
             saveBlock(fileSystem, blockPtr, block);
-            free(blockPtr);
+//            free(blockPtr);
             free(blocks);
             free(iNodePtr);
             return 0;
